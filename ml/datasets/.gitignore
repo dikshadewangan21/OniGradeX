@@ -1,0 +1,6 @@
+# Datasets are large and may be private. Keep them out of git.
+*
+!.gitignore
+!dataset_schema.yaml
+!sample_schema/
+!sample_schema/**

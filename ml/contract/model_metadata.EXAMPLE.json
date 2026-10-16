@@ -1,0 +1,26 @@
+{
+  "_comment": "EXAMPLE ONLY. Shows the shape of the file. Values are placeholders, not a real model. Copy to ml/artifacts/model_metadata.json and fill in from YOUR training run.",
+  "model_name": "REPLACE_ME",
+  "version": "REPLACE_ME",
+  "task": "detection",
+  "input": {"width": 640, "height": 640, "channels": 3, "dtype": "float32", "layout": "NHWC", "color_order": "RGB"},
+  "preprocessing": {
+    "resize": "letterbox",
+    "normalize": {"mean": [0, 0, 0], "std": [1, 1, 1], "scale": 0.00392156862},
+    "histogram_equalization": false
+  },
+  "outputs": {
+    "boxes": {"index": 0, "format": "xyxy_norm"},
+    "scores": {"index": 1},
+    "class_ids": {"index": 2}
+  },
+  "classes": [
+    {"id": 0, "name": "fresh", "role": "fresh"},
+    {"id": 1, "name": "rotten", "role": "defect", "detail_key": "rot_pct"},
+    {"id": 2, "name": "sprouted", "role": "defect", "detail_key": "sprout_pct"},
+    {"id": 3, "name": "skin_peel", "role": "defect", "detail_key": "skin_peel_pct"}
+  ],
+  "postprocess": {"score_threshold": 0.25, "nms_in_model": true, "nms_iou_threshold": 0.5},
+  "trained_on": "REPLACE_ME (dataset name, version, date)",
+  "metrics": {}
+}

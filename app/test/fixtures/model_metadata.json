@@ -1,0 +1,34 @@
+{
+  "model_name": "TEST-FIXTURE-MODEL (NOT A REAL MODEL)",
+  "version": "test-fixture-v1",
+  "task": "detection",
+  "input": {
+    "width": 64,
+    "height": 64,
+    "channels": 3,
+    "dtype": "float32",
+    "layout": "NHWC"
+  },
+  "preprocessing": {
+    "resize": "stretch",
+    "normalize": {
+      "mean": [0, 0, 0],
+      "std": [1, 1, 1]
+    }
+  },
+  "outputs": {
+    "boxes": {"index": 0, "format": "xyxy_norm"},
+    "scores": {"index": 1},
+    "class_ids": {"index": 2}
+  },
+  "classes": [
+    {"id": 0, "name": "fresh", "role": "fresh"},
+    {"id": 1, "name": "rot", "role": "defect", "detail_key": "rot_pct"}
+  ],
+  "postprocess": {
+    "score_threshold": 0.25,
+    "nms_in_model": true
+  },
+  "trained_on": "n/a (test fixture)",
+  "metrics": {}
+}

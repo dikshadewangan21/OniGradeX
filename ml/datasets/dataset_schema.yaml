@@ -1,0 +1,20 @@
+# Dataset contract for OniGrader (YOLO detection format). Your dataset goes under ml/datasets/onions/ (git-ignored).
+format: yolo_detection
+root: ml/datasets/onions
+splits: [train, val, test]          # split BY BATCH/PHOTO SESSION, not by crop, to avoid leakage
+directory_layout: "<split>/images/*.jpg|png  and  <split>/labels/*.txt (same stem)"
+label_line: "<class_id> <cx> <cy> <w> <h>   # normalised 0..1"
+classes:                              # EDIT to match what you actually label; keep in sync with model_metadata.json
+  - {id: 0, name: fresh,     role: fresh}
+  - {id: 1, name: rotten,    role: defect, detail_key: rot_pct}
+  - {id: 2, name: sprouted,  role: defect, detail_key: sprout_pct}
+  - {id: 3, name: skin_peel, role: defect, detail_key: skin_peel_pct}
+recommended_metadata_per_image:       # not required by validators; useful for later analysis
+  - variety
+  - mandi_or_site
+  - lighting: [daylight, shade, artificial]
+  - camera_model
+  - capture_date
+notes:
+  - The PPT claims robustness across 5+ Indian onion varieties and mandi lighting. That is only true if the training and test splits contain them; record variety per image so you can report per-variety metrics.
+  - Piled/overlapping onions hide defects; include such images or state the limitation.

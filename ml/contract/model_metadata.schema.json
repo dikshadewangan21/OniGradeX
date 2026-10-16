@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OniGrader model metadata",
+  "type": "object",
+  "required": ["model_name", "version", "task", "input", "outputs", "preprocessing", "classes", "postprocess", "trained_on", "metrics"],
+  "properties": {
+    "model_name": {"type": "string", "minLength": 1},
+    "version": {"type": "string", "minLength": 1, "description": "Written into every certificate; backend only accepts certificates whose model_version equals this."},
+    "task": {"const": "detection"},
+    "input": {
+      "type": "object",
+      "required": ["width", "height", "channels", "dtype", "layout"],
+      "properties": {
+        "width": {"type": "integer", "minimum": 32},
+        "height": {"type": "integer", "minimum": 32},
+        "channels": {"const": 3},
+        "dtype": {"enum": ["float32", "uint8"]},
+        "layout": {"const": "NHWC"},
+        "color_order": {"enum": ["RGB", "BGR"], "default": "RGB"}
+      }
+    },
+    "preprocessing": {
+      "type": "object",
+      "required": ["resize", "normalize"],
+      "properties": {
+        "resize": {"enum": ["stretch", "letterbox"]},
+        "normalize": {
+          "type": "object",
+          "required": ["mean", "std"],
+          "properties": {
+            "mean": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
+            "std": {"type": "array", "items": {"type": "number", "exclusiveMinimum": 0}, "minItems": 3, "maxItems": 3},
+            "scale": {"type": "number", "description": "Pixel multiplier applied before mean/std, e.g. 0.00392156862 for 0-255 -> 0-1"}
+          }
+        },
+        "histogram_equalization": {"type": "boolean", "default": false}
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "layout": {"enum": ["separate", "unified"], "default": "separate"},
+        "boxes": {"type": "object", "required": ["index", "format"], "properties": {"index": {"type": "integer"}, "format": {"enum": ["xyxy_norm", "xywh_norm", "yxyx_norm"]}}},
+        "scores": {"type": "object", "required": ["index"], "properties": {"index": {"type": "integer"}}},
+        "class_ids": {"type": "object", "required": ["index"], "properties": {"index": {"type": "integer"}}},
+        "unified": {
+          "type": "object",
+          "required": ["index"],
+          "properties": {
+            "index": {"type": "integer"},
+            "format": {"enum": ["xywh_norm", "xywh_abs", "xyxy_norm", "xyxy_abs"], "default": "xywh_norm"},
+            "has_objectness": {"type": "boolean", "default": false},
+            "transposed": {"type": "boolean", "default": false}
+          }
+        },
+        "heatmap": {"type": "object", "description": "OPTIONAL. Only if your exported model really emits a Grad-CAM-style map. If absent the app shows boxes only and never fabricates a heatmap.", "properties": {"index": {"type": "integer"}}}
+      },
+      "anyOf": [
+        {"required": ["boxes", "scores", "class_ids"]},
+        {"required": ["unified"]}
+      ]
+    },
+    "classes": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "role"],
+        "properties": {
+          "id": {"type": "integer", "minimum": 0},
+          "name": {"type": "string"},
+          "role": {"enum": ["fresh", "defect"]},
+          "detail_key": {"type": "string", "description": "For defect classes: key under certificate.details, e.g. rot_pct. Value = % of detected onions with this class."}
+        }
+      }
+    },
+    "postprocess": {
+      "type": "object",
+      "required": ["score_threshold", "nms_in_model"],
+      "properties": {
+        "score_threshold": {"type": "number", "minimum": 0, "maximum": 1},
+        "nms_in_model": {"type": "boolean"},
+        "nms_iou_threshold": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "trained_on": {"type": "string", "description": "Dataset name/version/date. Free text from you."},
+    "metrics": {"type": "object", "description": "Your measured test-set metrics. Leave {} if not measured. The app never displays numbers that are not here."}
+  }
+}
