@@ -129,6 +129,21 @@ class ApiClient {
   Future<void> resolveDispute(String id, String status, String note) => _call(
       () => _dio.post('/api/v1/disputes/$id/resolve', data: {'status': status, 'resolution_note': note}), (_) {});
 
+  Future<void> assignDispute(String id, String officerId) => _call(
+      () => _dio.post('/api/v1/disputes/$id/assign', data: {'officer_id': officerId}), (_) {});
+
+  Future<List<dynamic>> assignedDisputes() => _call(
+      () => _dio.get('/api/v1/disputes/assigned'), (d) => List<dynamic>.from(d));
+
+  Future<void> reinspectDispute(String id, String certId, {String? notes}) => _call(
+      () => _dio.post('/api/v1/disputes/$id/reinspect', data: {'certificate_id': certId, if (notes != null) 'notes': notes}), (_) {});
+
+  Future<List<dynamic>> notifications() => _call(
+      () => _dio.get('/api/v1/notifications'), (d) => List<dynamic>.from(d));
+
+  Future<void> markNotificationRead(String id) => _call(
+      () => _dio.post('/api/v1/notifications/$id/read'), (_) {});
+
   Future<Map<String, dynamic>> summary() =>
       _call(() => _dio.get('/api/v1/analytics/summary'), (d) => Map<String, dynamic>.from(d));
 

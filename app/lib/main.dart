@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'config.dart';
+import 'l10n/app_localizations.dart';
 import 'screens/admin/admin_home.dart';
 import 'screens/auth_screen.dart';
 import 'screens/farmer/farmer_home.dart';
@@ -15,12 +17,27 @@ void main() {
 class OniGraderApp extends StatelessWidget {
   const OniGraderApp({super.key});
   @override
-  Widget build(BuildContext context) => MaterialApp(
-        title: 'OniGrader',
-        theme: ThemeData(colorSchemeSeed: const Color(0xFF7B1FA2), useMaterial3: true),
-        darkTheme: ThemeData(colorSchemeSeed: const Color(0xFF7B1FA2), useMaterial3: true, brightness: Brightness.dark),
-        home: const Root(),
-      );
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    return MaterialApp(
+      title: 'OniGrader',
+      locale: state.currentLocale,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en'),
+        Locale('hi'),
+        Locale('mr'),
+      ],
+      theme: ThemeData(colorSchemeSeed: const Color(0xFF7B1FA2), useMaterial3: true),
+      darkTheme: ThemeData(colorSchemeSeed: const Color(0xFF7B1FA2), useMaterial3: true, brightness: Brightness.dark),
+      home: const Root(),
+    );
+  }
 }
 
 class Root extends StatelessWidget {

@@ -33,8 +33,12 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("MODEL_FILE_PATH", str(model))
     monkeypatch.setenv("UPLOAD_DIR", str(tmp_path / "up"))
     monkeypatch.setenv("RATE_LIMIT", "10000/minute")
+    monkeypatch.setenv("RATE_LIMIT_LOGIN", "10000/minute")
+    monkeypatch.setenv("RATE_LIMIT_SYNC", "10000/minute")
     monkeypatch.setenv("FLAG_MIN_BATCHES", "2")
     from app import config, db
+    from app.services.rate_limiter import reset_rate_limits
+    reset_rate_limits()
     config.get_settings.cache_clear()
     db.reset_engine()
     return {"meta": meta, "model": model, "tmp": tmp_path}

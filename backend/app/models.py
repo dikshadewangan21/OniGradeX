@@ -113,10 +113,26 @@ class Dispute(Base):
     status: Mapped[DisputeStatus] = mapped_column(Enum(DisputeStatus), default=DisputeStatus.open, index=True)
     resolution_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     resolved_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    assigned_officer_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    reinspection_certificate_id: Mapped[str | None] = mapped_column(ForeignKey("certificates.id"), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
+    assigned_officer = relationship("User", foreign_keys=[assigned_officer_id])
+    reinspection_certificate = relationship("Certificate", foreign_keys=[reinspection_certificate_id])
+
     __table_args__ = (UniqueConstraint("certificate_id", "raised_by", "status", name="uq_open_dispute"),)
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    message: Mapped[str] = mapped_column(Text)
+    dispute_id: Mapped[str | None] = mapped_column(ForeignKey("disputes.id"), nullable=True, index=True)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class PriceCache(Base):

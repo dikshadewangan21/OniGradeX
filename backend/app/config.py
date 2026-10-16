@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     weight_mismatch_tolerance_pct: float = 15.0
 
     rate_limit: str = "60/minute"
+    rate_limit_login: str = "5/minute"
+    rate_limit_sync: str = "30/minute"
     cors_origins: str = ""
 
 

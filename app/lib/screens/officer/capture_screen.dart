@@ -135,9 +135,55 @@ class _CaptureScreenState extends State<CaptureScreen> {
     final s = context.read<AppState>();
     final r = _result!.summary;
     final defn = Map<String, dynamic>.from(s.rule!['definition'] as Map);
+
+    // 5b. Reference-based diameter calculation
+    final refSizeMm = (defn['reference_object_size_mm'] as num?)?.toDouble() ?? 25.0;
+    final refClasses = s.model.classes
+        .where((c) => c['role'] == 'reference' || (c['name'] as String).toLowerCase().contains('reference') || (c['name'] as String).toLowerCase().contains('coin'))
+        .map((c) => c['id'] as int)
+        .toSet();
+    final refDets = _result!.detections.where((d) => refClasses.contains(d.classId)).toList();
+    if (refDets.isNotEmpty && refDets.first.box != null) {
+      final refBox = refDets.first.box!;
+      final refW = (refBox[2] - refBox[0]).abs();
+      if (refW > 0.001) {
+        final mmPerNormWidth = refSizeMm / refW;
+        final onionDiams = <double>[];
+        for (final d in _result!.detections) {
+          if (d.box != null && !refClasses.contains(d.classId)) {
+            final wNorm = (d.box![2] - d.box![0]).abs();
+            final hNorm = (d.box![3] - d.box![1]).abs();
+            onionDiams.add(((wNorm + hNorm) / 2.0) * mmPerNormWidth);
+          }
+        }
+        if (onionDiams.isNotEmpty) {
+          onionDiams.sort();
+          r.details['median_diameter_mm'] = double.parse(onionDiams[onionDiams.length ~/ 2].toStringAsFixed(1));
+        }
+      }
+    } else {
+      // Refuse to output mm without a detected reference object
+      r.details.remove('median_diameter_mm');
+    }
+
+    // 5c. Weight check via volume / depth estimate
+    double? estimatedWeightKg;
+    final density = (defn['density_constant_g_cm3'] as num?)?.toDouble() ?? 0.96;
+    if (r.details.containsKey('estimated_volume_cm3')) {
+      final vol = (r.details['estimated_volume_cm3'] as num).toDouble();
+      estimatedWeightKg = double.parse(((vol * density) / 1000.0).toStringAsFixed(2));
+    }
+
+    // 5d. Shelf life only if model metadata declares it
+    final outs = s.model.metadata?['outputs'] as Map? ?? const {};
+    if (!outs.containsKey('shelf_life')) {
+      r.details.remove('shelf_life_days');
+    }
+
     final grade = evaluateGrade(defn, r.defectivePct, r.details);
     final phone = _farmer.text.trim();
     final weight = double.tryParse(_weight.text.trim());
+
     final body = buildCertificate(CertificateInput(
       mandiId: s.profile?['mandi_id'] as String?,
       farmerPhone: phone.isEmpty ? null : phone,
@@ -153,6 +199,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
       batchConfidence: r.batchConfidence,
       details: r.details,
       scaleWeightKg: weight,
+      estimatedWeightKg: estimatedWeightKg,
       rate: _rate,
       rateSource: _rateSource,
     ));
@@ -172,7 +219,10 @@ class _CaptureScreenState extends State<CaptureScreen> {
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
     return Scaffold(
-      appBar: AppBar(title: const Text('Grade a batch')),
+      appBar: AppBar(
+        title: const Text('Grade a batch'),
+        actions: const [LanguageSwitcherAction()],
+      ),
       body: switch (_stage) {
         'working' => const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [CircularProgressIndicator(), SizedBox(height: 12), Text('Analysing on this device…')])),
         'recapture' => ErrorView(
@@ -192,20 +242,31 @@ class _CaptureScreenState extends State<CaptureScreen> {
     final grade = evaluateGrade(defn, r.defectivePct, r.details);
     final defectIds = {for (final c in s.model.classes) if (c['role'] == 'defect') c['id'] as int};
     final payout = _rate == null ? null : (_rate! * r.freshPct / 100);
+    final hasHeatmap = _result?.heatmap != null;
+
     return ListView(padding: const EdgeInsets.all(16), children: [
       AspectRatio(
         aspectRatio: 4 / 3,
         child: Stack(fit: StackFit.expand, children: [
           Image.file(_image!, fit: BoxFit.fill),
+          if (hasHeatmap)
+            Opacity(opacity: 0.6, child: Image.memory(_result!.heatmap!, fit: BoxFit.fill)),
           CustomPaint(painter: DetectionBoxPainter(_result!.detections, defectIds)),
         ]),
       ),
       const SizedBox(height: 4),
-      const Text('Red = defective onion, green = fresh. Boxes show what the model detected; they are not a Grad-CAM heatmap.', style: TextStyle(fontSize: 12)),
+      Text(
+        hasHeatmap
+            ? 'Heatmap overlay rendered from model heatmap output. Red/green boxes show detections.'
+            : 'Red = defective onion, green = fresh. Boxes show what the model detected; no model heatmap output declared.',
+        style: const TextStyle(fontSize: 12),
+      ),
       const SizedBox(height: 16),
       Text('Grade $grade', style: Theme.of(context).textTheme.headlineMedium),
       Text('${r.onionCount} onions · ${r.freshPct}% fresh · ${r.defectivePct}% defective'),
-      for (final e in r.details.entries) Text('${e.key}: ${e.value}%'),
+      for (final e in r.details.entries) Text('${e.key}: ${e.value}'),
+      if (!r.details.containsKey('median_diameter_mm'))
+        const Text('Median diameter: Not available (no reference object detected in frame)', style: TextStyle(color: Colors.grey)),
       Text('Model confidence (mean): ${(r.batchConfidence * 100).toStringAsFixed(1)}%'),
       const SizedBox(height: 8),
       if (payout != null) Text('Indicative payout: ₹${payout.toStringAsFixed(2)}/kg  ($_rateSource)') else Text(_rateNote ?? 'Payout not computed.'),

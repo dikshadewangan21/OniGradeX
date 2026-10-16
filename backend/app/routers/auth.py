@@ -24,8 +24,14 @@ def register(body: RegisterIn, db: Session = Depends(get_db)):
     return u
 
 
+from ..config import get_settings
+from ..services.rate_limiter import check_rate_limit
+
+
 @router.post("/auth/login", response_model=TokenOut)
 def login(body: LoginIn, db: Session = Depends(get_db)):
+    s = get_settings()
+    check_rate_limit(f"login:{body.phone}", s.rate_limit_login, resource_name="login")
     u = db.scalar(select(User).where(User.phone == body.phone))
     # Same error for unknown user / wrong password.
     if not u or not u.is_active or not verify_password(body.password, u.password_hash):

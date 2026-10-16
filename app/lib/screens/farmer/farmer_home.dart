@@ -16,6 +16,7 @@ class _FarmerHomeState extends State<FarmerHome> {
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: const Text('My onions'), actions: [
+          const LanguageSwitcherAction(),
           IconButton(tooltip: 'Sign out', icon: const Icon(Icons.logout), onPressed: context.read<AppState>().logout),
         ]),
         body: _tab == 0 ? const _Certificates() : const _Disputes(),

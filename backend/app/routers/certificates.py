@@ -62,11 +62,15 @@ def can_view(user: User, c: Certificate) -> bool:
     return c.farmer_id == user.id or c.farmer_phone == user.phone
 
 
+from ..services.rate_limiter import check_rate_limit
+
+
 @router.post("/certificates/sync", response_model=CertificateOut)
 def sync_certificate(body: CertificateIn, db: Session = Depends(get_db),
                      officer: User = Depends(require_roles(Role.officer, Role.admin))):
     """Idempotent upload of an offline-issued certificate. Safe to retry."""
     s = get_settings()
+    check_rate_limit(f"sync:{officer.id}", s.rate_limit_sync, resource_name="certificate sync")
 
     existing = db.get(Certificate, body.id)
     if existing:

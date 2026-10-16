@@ -91,3 +91,25 @@ class DetectionBoxPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant DetectionBoxPainter old) => old.detections != detections;
 }
+
+class LanguageSwitcherAction extends StatelessWidget {
+  const LanguageSwitcherAction({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.language),
+      tooltip: 'Language / भाषा',
+      onSelected: (code) {
+        try {
+          (context as dynamic).read<dynamic>().setLocale(Locale(code));
+        } catch (_) {}
+      },
+      itemBuilder: (context) => const [
+        PopupMenuItem(value: 'en', child: Text('English')),
+        PopupMenuItem(value: 'hi', child: Text('हिंदी (Hindi)')),
+        PopupMenuItem(value: 'mr', child: Text('मराठी (Marathi)')),
+      ],
+    );
+  }
+}

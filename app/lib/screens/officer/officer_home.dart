@@ -16,6 +16,7 @@ class OfficerHome extends StatelessWidget {
     final canGrade = s.model.ready && s.rule != null;
     return Scaffold(
       appBar: AppBar(title: const Text('Procurement'), actions: [
+        const LanguageSwitcherAction(),
         IconButton(
           tooltip: 'Model status',
           icon: Icon(s.model.ready ? Icons.memory : Icons.warning_amber),

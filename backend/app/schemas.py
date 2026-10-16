@@ -167,6 +167,15 @@ class DisputeResolveIn(BaseModel):
         return v
 
 
+class DisputeAssignIn(BaseModel):
+    officer_id: str
+
+
+class DisputeReinspectionResultIn(BaseModel):
+    certificate_id: str
+    notes: str | None = None
+
+
 class DisputeOut(BaseModel):
     id: str
     certificate_id: str
@@ -174,6 +183,20 @@ class DisputeOut(BaseModel):
     reason: str
     status: DisputeStatus
     resolution_note: str | None
+    assigned_officer_id: str | None = None
+    reinspection_certificate_id: str | None = None
     created_at: datetime
     updated_at: datetime
     model_config = {"from_attributes": True}
+
+
+class NotificationOut(BaseModel):
+    id: str
+    user_id: str
+    title: str
+    message: str
+    dispute_id: str | None
+    is_read: bool
+    created_at: datetime
+    model_config = {"from_attributes": True}
+

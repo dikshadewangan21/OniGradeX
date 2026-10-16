@@ -38,6 +38,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, actions: const [LanguageSwitcherAction()]),
         body: SafeArea(
           child: Center(
             child: SingleChildScrollView(

@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 // Tool / test to verify a real model on an image once installed.
 // Run with:
 //   flutter test tool/check_model_on_image.dart

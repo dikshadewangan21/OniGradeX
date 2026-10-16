@@ -34,6 +34,7 @@ class CertificateInput {
     required this.batchConfidence,
     required this.details,
     this.scaleWeightKg,
+    this.estimatedWeightKg,
     this.rate,
     this.rateSource,
   });
@@ -48,6 +49,7 @@ class CertificateInput {
   final double freshPct, defectivePct, batchConfidence;
   final Map<String, dynamic> details;
   final double? scaleWeightKg;
+  final double? estimatedWeightKg;
   final double? rate;
   final String? rateSource;
 }
@@ -73,7 +75,7 @@ Map<String, dynamic> buildCertificate(CertificateInput c, {DateTime? now}) {
     'batch_confidence': c.batchConfidence,
     'details': c.details,
     'scale_weight_kg': c.scaleWeightKg,
-    'estimated_weight_kg': null, // MiDaS volume check is not implemented in this build
+    'estimated_weight_kg': c.estimatedWeightKg,
     'rate_per_kg': c.rate,
     'rate_source': c.rateSource,
   };

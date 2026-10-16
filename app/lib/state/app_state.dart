@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 import '../config.dart';
 import '../data/api_client.dart';
@@ -22,6 +22,12 @@ class AppState extends ChangeNotifier {
   int pendingCount = 0;
   String? lastSyncError;
   StreamSubscription? _conn;
+  Locale currentLocale = const Locale('en');
+
+  void setLocale(Locale loc) {
+    currentLocale = loc;
+    notifyListeners();
+  }
 
   Future<void> init() async {
     db = await LocalDb.open();
