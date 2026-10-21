@@ -31,10 +31,13 @@ class AppState extends ChangeNotifier {
 
   Future<void> init() async {
     db = await LocalDb.open();
-    if (AppConfig.isConfigured) {
-      api = ApiClient(AppConfig.apiBaseUrl);
-      session = await api.restore();
-    }
+    final savedUrl = await db.getKv('server_endpoint');
+    final activeUrl = (savedUrl != null && savedUrl.value is String && (savedUrl.value as String).isNotEmpty)
+        ? (savedUrl.value as String)
+        : AppConfig.defaultBaseUrl;
+    AppConfig.apiBaseUrl = activeUrl;
+    api = ApiClient(activeUrl);
+    session = await api.restore();
     model = await loadModelStatus();
     if (session != null) await refreshContext();
     ready = true;
@@ -42,6 +45,16 @@ class AppState extends ChangeNotifier {
     _conn = Connectivity().onConnectivityChanged.listen((r) {
       if (!r.contains(ConnectivityResult.none)) syncPending();
     });
+  }
+
+  Future<void> setServerUrl(String url) async {
+    final clean = url.trim().replaceAll(RegExp(r'/+$'), '');
+    AppConfig.apiBaseUrl = clean;
+    await db.putKv('server_endpoint', clean);
+    api = ApiClient(clean);
+    session = await api.restore();
+    if (session != null) await refreshContext();
+    notifyListeners();
   }
 
   @override

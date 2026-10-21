@@ -7,7 +7,14 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=[
+            str(REPO_ROOT / "backend" / ".env"),
+            str(REPO_ROOT / ".env"),
+            ".env",
+        ],
+        extra="ignore",
+    )
 
     database_url: str = "postgresql+psycopg://onigrader:onigrader@localhost:5432/onigrader"
     # Required secrets: no defaults on purpose. Startup fails loudly if unset.

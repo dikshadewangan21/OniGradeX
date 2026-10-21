@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../data/api_client.dart';
 import '../../state/app_state.dart';
 import '../../widgets/common.dart';
+import '../../widgets/gov_ui.dart';
 
 class FarmerHome extends StatefulWidget {
   const FarmerHome({super.key});
@@ -13,49 +14,179 @@ class FarmerHome extends StatefulWidget {
 
 class _FarmerHomeState extends State<FarmerHome> {
   int _tab = 0;
+
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('My onions'), actions: [
+  Widget build(BuildContext context) {
+    final s = context.watch<AppState>();
+
+    return Scaffold(
+      backgroundColor: GovColors.background,
+      appBar: AppBar(
+        title: const Row(
+          children: [
+            GovEmblemPlaceholder(size: 32),
+            SizedBox(width: 10),
+            Text('Farmer Quality Passbook', style: TextStyle(fontWeight: FontWeight.w700, color: GovColors.navy)),
+          ],
+        ),
+        actions: [
           const LanguageSwitcherAction(),
-          IconButton(tooltip: 'Sign out', icon: const Icon(Icons.logout), onPressed: context.read<AppState>().logout),
-        ]),
-        body: _tab == 0 ? const _Certificates() : const _Disputes(),
-        bottomNavigationBar: NavigationBar(
+          IconButton(
+            tooltip: 'Sign out',
+            icon: const Icon(Icons.logout, color: GovColors.error),
+            onPressed: s.logout,
+          ),
+        ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(3),
+          child: GovTricolorBar(height: 3),
+        ),
+      ),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: GovColors.border)),
+        ),
+        child: NavigationBar(
+          backgroundColor: Colors.white,
+          indicatorColor: GovColors.navySurface,
           selectedIndex: _tab,
           onDestinationSelected: (i) => setState(() => _tab = i),
           destinations: const [
-            NavigationDestination(icon: Icon(Icons.receipt_long), label: 'Certificates'),
-            NavigationDestination(icon: Icon(Icons.gavel), label: 'Disputes'),
+            NavigationDestination(
+              icon: Icon(Icons.receipt_long, color: GovColors.navy),
+              label: 'My Certificates',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.gavel, color: GovColors.navy),
+              label: 'Dispute Redressal',
+            ),
           ],
         ),
-      );
+      ),
+      body: Column(
+        children: [
+          // Welcome greeting banner
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            color: Colors.white,
+            child: Row(
+              children: [
+                const Icon(Icons.account_circle, color: GovColors.navy, size: 28),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Farmer: ${s.profile?['name'] ?? "Registered Producer"}',
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: GovColors.navy),
+                      ),
+                      Text(
+                        'Registered Mobile: ${s.profile?['phone'] ?? ""}',
+                        style: const TextStyle(fontSize: 11, color: GovColors.textMuted),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: GovColors.greenLight,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: GovColors.green),
+                  ),
+                  child: const Text('VERIFIED FARMER', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: GovColors.greenDark)),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(child: _tab == 0 ? const _Certificates() : const _Disputes()),
+          const GovPortalFooter(compact: true),
+        ],
+      ),
+    );
+  }
 }
 
 class _Certificates extends StatelessWidget {
   const _Certificates();
+
   @override
   Widget build(BuildContext context) => Loader<Map<String, dynamic>>(
         load: () => context.read<AppState>().api.listCertificates(),
         builder: (c, data, reload) {
           final items = (data['items'] as List).cast<Map>();
           if (items.isEmpty) {
-            return const EmptyView('No certificates yet. Ask the officer to enter your phone number when grading.');
+            return const EmptyView(
+              'No quality certificates issued for your phone number yet.\nProvide your mobile number to the Procurement Officer at the mandi.',
+            );
           }
           return RefreshIndicator(
             onRefresh: () async => reload(),
             child: ListView.separated(
+              padding: const EdgeInsets.all(16),
               itemCount: items.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (c, i) {
                 final it = items[i];
-                return ListTile(
-                  leading: CircleAvatar(child: Text('${it['grade']}'.characters.first)),
-                  title: Text('${it['grade']} · ${it['fresh_pct']}% fresh'),
-                  subtitle: Text('${it['captured_at']}${it['payout_per_kg'] != null ? '\nPayout ₹${it['payout_per_kg']}/kg' : ''}'),
-                  isThreeLine: it['payout_per_kg'] != null,
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.push(c, MaterialPageRoute(builder: (_) => _Detail(cert: Map<String, dynamic>.from(it)))),
-                );
+                final grade = '${it['grade']}';
+                final isGradeA = grade.toUpperCase().contains('A');
+
+                return Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: GovColors.border),
+                  ),
+                  child: Material(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                    clipBehavior: Clip.antiAlias,
+                    child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    leading: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isGradeA ? GovColors.greenLight : GovColors.saffronLight,
+                        border: Border.all(color: isGradeA ? GovColors.green : GovColors.saffron, width: 1.5),
+                      ),
+                      child: Center(
+                        child: Text(
+                          grade.characters.first,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
+                            color: isGradeA ? GovColors.greenDark : GovColors.saffronDark,
+                          ),
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      'Official Grade: $grade · ${it['fresh_pct']}% Fresh',
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: GovColors.navy),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 2),
+                        Text('Assessment Date: ${it['captured_at']}', style: const TextStyle(fontSize: 11, color: GovColors.textMuted)),
+                        if (it['payout_per_kg'] != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            'Estimated Mandi Payout: ₹${it['payout_per_kg']}/kg (${it['rate_source'] ?? "e-NAM Modal Rate"})',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: GovColors.greenDark),
+                          ),
+                        ],
+                      ],
+                    ),
+                    trailing: const Icon(Icons.chevron_right, color: GovColors.navy),
+                    onTap: () => Navigator.push(c, MaterialPageRoute(builder: (_) => _Detail(cert: Map<String, dynamic>.from(it)))),
+                  ),
+                ),
+              );
               },
             ),
           );
@@ -74,16 +205,22 @@ class _DetailState extends State<_Detail> {
   final _reason = TextEditingController();
   bool _busy = false;
 
+  @override
+  void dispose() {
+    _reason.dispose();
+    super.dispose();
+  }
+
   Future<void> _dispute() async {
     if (_reason.text.trim().length < 10) {
-      toast(context, 'Please describe the problem (at least 10 characters).');
+      toast(context, 'Please describe your dispute reason in detail (at least 10 characters).');
       return;
     }
     setState(() => _busy = true);
     try {
       await context.read<AppState>().api.raiseDispute(widget.cert['id'] as String, _reason.text.trim());
       if (!mounted) return;
-      toast(context, 'Dispute raised. An admin will arrange re-inspection.');
+      toast(context, 'Dispute raised. An official re-inspection will be assigned.');
       Navigator.pop(context);
     } on ApiException catch (e) {
       if (mounted) toast(context, e.message);
@@ -95,47 +232,218 @@ class _DetailState extends State<_Detail> {
   @override
   Widget build(BuildContext context) {
     final c = widget.cert;
+    final grade = '${c['grade']}';
+    final isGradeA = grade.toUpperCase().contains('A');
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Certificate')),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
-        Text('Grade ${c['grade']}', style: Theme.of(context).textTheme.headlineMedium),
-        Text('${c['onion_count']} onions · ${c['fresh_pct']}% fresh · ${c['defective_pct']}% defective'),
-        for (final e in (c['details'] as Map).entries) Text('${e.key}: ${e.value}%'),
-        if (c['payout_per_kg'] != null) Text('Payout: ₹${c['payout_per_kg']}/kg (${c['rate_source']})'),
-        Text('ID: ${c['id']}', style: const TextStyle(fontSize: 12)),
-        const Divider(height: 32),
-        Text('Disagree with this grade?', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _reason,
-          maxLines: 4,
-          decoration: const InputDecoration(labelText: 'What is wrong?', border: OutlineInputBorder()),
+      backgroundColor: GovColors.background,
+      appBar: AppBar(
+        title: const Text('Produce Grading Certificate', style: TextStyle(fontWeight: FontWeight.w700, color: GovColors.navy)),
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(3),
+          child: GovTricolorBar(height: 3),
         ),
-        const SizedBox(height: 12),
-        BusyButton(label: 'Raise dispute', busy: _busy, onPressed: _dispute),
-      ]),
+      ),
+      body: Column(
+        children: [
+          const GovTopUtilityBar(),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      GovCard(
+                        title: 'Produce Quality Summary',
+                        subtitle: 'Official AI grading results under NAFED standards',
+                        icon: Icons.verified_outlined,
+                        badge: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: isGradeA ? GovColors.greenLight : GovColors.saffronLight,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: isGradeA ? GovColors.green : GovColors.saffron),
+                          ),
+                          child: Text(
+                            'GRADE $grade',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: isGradeA ? GovColors.greenDark : GovColors.saffronDark,
+                            ),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Grade $grade',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                color: isGradeA ? GovColors.greenDark : GovColors.navy,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${c['onion_count']} sample onions evaluated · ${c['fresh_pct']}% fresh · ${c['defective_pct']}% defective',
+                              style: const TextStyle(fontSize: 13, color: GovColors.textSecondary),
+                            ),
+                            const Divider(height: 20),
+                            if (c['details'] is Map) ...[
+                              const Text('Defect Breakdown:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: GovColors.navy)),
+                              const SizedBox(height: 6),
+                              for (final e in (c['details'] as Map).entries)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 2),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text('${e.key}:', style: const TextStyle(fontSize: 12, color: GovColors.textSecondary)),
+                                      Text('${e.value}%', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: GovColors.navy)),
+                                    ],
+                                  ),
+                                ),
+                              const Divider(height: 20),
+                            ],
+                            if (c['payout_per_kg'] != null) ...[
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text('Estimated Rate:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: GovColors.textMuted)),
+                                  Text('₹${c['payout_per_kg']}/kg (${c['rate_source'] ?? "e-NAM"})',
+                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: GovColors.greenDark)),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                            ],
+                            SelectableText('Certificate UUID: ${c['id']}',
+                                style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: GovColors.textMuted)),
+                          ],
+                        ),
+                      ),
+                      GovCard(
+                        title: 'Dispute Redressal / Re-Inspection Request',
+                        subtitle: 'File an official dispute if you contest this grading evaluation',
+                        icon: Icons.gavel,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Text(
+                              'Under Mandi Grading Guidelines, you have the right to request a second manual re-inspection by an independent procurement officer.',
+                              style: TextStyle(fontSize: 11.5, color: GovColors.textSecondary, height: 1.35),
+                            ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: _reason,
+                              maxLines: 3,
+                              decoration: const InputDecoration(
+                                labelText: 'Reason for Disputing Grade / आपत्ति का कारण',
+                                hintText: 'Specify defect percentages or scale weight discrepancy observed…',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            GovButton(
+                              label: 'Submit Formal Dispute Request',
+                              icon: Icons.send_outlined,
+                              isAccent: true,
+                              busy: _busy,
+                              onPressed: _dispute,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const GovPortalFooter(),
+        ],
+      ),
     );
   }
 }
 
 class _Disputes extends StatelessWidget {
   const _Disputes();
+
   @override
   Widget build(BuildContext context) => Loader<Map<String, dynamic>>(
         load: () => context.read<AppState>().api.listDisputes(),
         builder: (c, data, reload) {
           final items = (data['items'] as List).cast<Map>();
-          if (items.isEmpty) return const EmptyView('You have not raised any disputes.');
+          if (items.isEmpty) {
+            return const EmptyView('You have not submitted any grading disputes.');
+          }
           return RefreshIndicator(
             onRefresh: () async => reload(),
             child: ListView.separated(
+              padding: const EdgeInsets.all(16),
               itemCount: items.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (c, i) => ListTile(
-                title: Text('${items[i]['status']}'.toUpperCase()),
-                subtitle: Text('${items[i]['reason']}${items[i]['resolution_note'] != null ? '\nAdmin: ${items[i]['resolution_note']}' : ''}'),
-                isThreeLine: true,
-              ),
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (c, i) {
+                final it = items[i];
+                final status = '${it['status']}'.toUpperCase();
+                final isResolved = status == 'UPHELD' || status == 'OVERTURNED';
+
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: GovColors.border),
+                  ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.all(14),
+                    leading: Icon(
+                      isResolved ? Icons.check_circle : Icons.pending_actions,
+                      color: isResolved ? GovColors.green : GovColors.saffronDark,
+                      size: 28,
+                    ),
+                    title: Row(
+                      children: [
+                        const Text(
+                          'Dispute Status: ',
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: GovColors.textMuted),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isResolved ? GovColors.greenLight : GovColors.saffronLight,
+                            borderRadius: BorderRadius.circular(3),
+                            border: Border.all(color: isResolved ? GovColors.green : GovColors.saffron),
+                          ),
+                          child: Text(
+                            status,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: isResolved ? GovColors.greenDark : GovColors.saffronDark,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 6),
+                        Text('Reason: ${it['reason']}', style: const TextStyle(fontSize: 12, color: GovColors.navy)),
+                        if (it['resolution_note'] != null) ...[
+                          const SizedBox(height: 4),
+                          Text('Mandi Admin Note: ${it['resolution_note']}',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: GovColors.greenDark)),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
           );
         },

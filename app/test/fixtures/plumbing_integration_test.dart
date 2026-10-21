@@ -40,9 +40,35 @@ void main() {
     const baseUrl = 'http://127.0.0.1:8009';
     late final ApiClient api;
 
+    Process? serverProcess;
+
     setUpAll(() async {
       HttpOverrides.global = null;
       api = ApiClient(baseUrl);
+      try {
+        final socket = await Socket.connect('127.0.0.1', 8009, timeout: const Duration(milliseconds: 500));
+        socket.destroy();
+      } catch (_) {
+        // Server not running; auto-start test fixture server
+        final workingDir = Directory.current.path.endsWith('app') ? '..' : '.';
+        serverProcess = await Process.start(
+          'python',
+          ['tool/test_fixture_server.py', '--port', '8009'],
+          workingDirectory: workingDir,
+        );
+        for (var i = 0; i < 30; i++) {
+          await Future.delayed(const Duration(milliseconds: 200));
+          try {
+            final s = await Socket.connect('127.0.0.1', 8009, timeout: const Duration(milliseconds: 200));
+            s.destroy();
+            break;
+          } catch (_) {}
+        }
+      }
+    });
+
+    tearDownAll(() async {
+      serverProcess?.kill();
     });
 
     test('Full plumbing roundtrip: summarize -> evaluateGrade -> buildCertificate -> POST /certificates/sync -> GET /verify/{id}', () async {

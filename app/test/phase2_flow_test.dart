@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onigrader/data/api_client.dart';
 import 'package:onigrader/data/local_db.dart';
 import 'package:onigrader/ml/model_loader.dart';
 import 'package:onigrader/screens/model_status_screen.dart';
@@ -48,6 +49,21 @@ class TestAppState extends ChangeNotifier implements AppState {
 
   @override
   String get role => 'officer';
+
+  @override
+  Session? session;
+
+  @override
+  Map<String, dynamic>? profile;
+
+  @override
+  Locale currentLocale = const Locale('en');
+
+  @override
+  void setLocale(Locale loc) {
+    currentLocale = loc;
+    notifyListeners();
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

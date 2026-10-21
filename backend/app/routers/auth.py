@@ -36,7 +36,8 @@ def login(body: LoginIn, db: Session = Depends(get_db)):
     # Same error for unknown user / wrong password.
     if not u or not u.is_active or not verify_password(body.password, u.password_hash):
         raise HTTPException(401, "Invalid phone or password")
-    return TokenOut(access_token=create_token(u.id, u.role.value), role=u.role, user_id=u.id)
+    role_str = u.role.value if hasattr(u.role, "value") else str(u.role)
+    return TokenOut(access_token=create_token(u.id, role_str), role=u.role, user_id=u.id)
 
 
 @router.get("/auth/me", response_model=UserOut)

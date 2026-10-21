@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -22,12 +22,16 @@ def create_app() -> FastAPI:
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     app.add_middleware(SlowAPIMiddleware)
-    if s.cors_origins:
-        app.add_middleware(CORSMiddleware, allow_origins=s.cors_origins.split(","),
-                           allow_methods=["*"], allow_headers=["*"])
+    origins = [o.strip() for o in s.cors_origins.split(",") if o.strip()] if s.cors_origins else ["*"]
+    app.add_middleware(CORSMiddleware, allow_origins=origins,
+                       allow_methods=["*"], allow_headers=["*"])
+
+    from starlette.exceptions import HTTPException as StarletteHTTPException
 
     @app.exception_handler(Exception)
     async def unhandled(request: Request, exc: Exception):
+        if isinstance(exc, (HTTPException, StarletteHTTPException)):
+            return JSONResponse({"detail": exc.detail}, status_code=exc.status_code, headers=getattr(exc, "headers", None))
         log.exception("Unhandled error on %s %s", request.method, request.url.path)
         return JSONResponse({"detail": "Internal server error"}, status_code=500)
 

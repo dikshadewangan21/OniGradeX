@@ -48,6 +48,17 @@ class ApiClient {
     await _storage.deleteAll();
   }
 
+  String get baseUrl => _dio.options.baseUrl;
+
+  Future<bool> checkHealth() async {
+    try {
+      final res = await _dio.get('/api/v1/health');
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<T> _call<T>(Future<Response<dynamic>> Function() f, T Function(dynamic) map) async {
     try {
       final r = await f();
@@ -55,7 +66,7 @@ class ApiClient {
     } on DioException catch (e) {
       final code = e.response?.statusCode;
       if (code == null) {
-        throw ApiException('Cannot reach server. Check your connection.');
+        throw ApiException('Cannot connect to server at ${_dio.options.baseUrl}. Please verify your network or server status.');
       }
       final d = e.response?.data;
       var msg = 'Request failed ($code)';
@@ -63,6 +74,9 @@ class ApiClient {
         msg = d['detail'] is String ? d['detail'] as String : (d['detail'] as List).map((x) => x['msg']).join('; ');
       }
       if (code == 401 && _token != null) msg = 'Session expired. Please sign in again.';
+      if (code == 401 && _token == null) msg = 'Invalid mobile number or password.';
+      if (code == 429) msg = msg.isNotEmpty ? msg : 'Too many attempts. Please wait a moment before trying again.';
+      if (code == 500) msg = 'Server encountered an internal error. Please try again or verify backend configuration.';
       throw ApiException(msg, status: code);
     }
   }

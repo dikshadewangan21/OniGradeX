@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../data/api_client.dart';
 import '../../state/app_state.dart';
 import '../../widgets/common.dart';
+import '../../widgets/gov_ui.dart';
 
 class AdminHome extends StatefulWidget {
   const AdminHome({super.key});
@@ -19,19 +20,51 @@ class _AdminHomeState extends State<AdminHome> {
   Widget build(BuildContext context) {
     const pages = [_Overview(), _DisputeQueue(), _Rules(), _Setup()];
     return Scaffold(
-      appBar: AppBar(title: const Text('Central admin'), actions: [
-        const LanguageSwitcherAction(),
-        IconButton(tooltip: 'Sign out', icon: const Icon(Icons.logout), onPressed: context.read<AppState>().logout),
-      ]),
-      body: pages[_tab],
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.insights), label: 'Overview'),
-          NavigationDestination(icon: Icon(Icons.gavel), label: 'Disputes'),
-          NavigationDestination(icon: Icon(Icons.rule), label: 'Rules'),
-          NavigationDestination(icon: Icon(Icons.settings), label: 'Setup'),
+      backgroundColor: GovColors.background,
+      appBar: AppBar(
+        title: const Row(
+          children: [
+            GovEmblemPlaceholder(size: 32),
+            SizedBox(width: 10),
+            Text('Central Admin Portal', style: TextStyle(fontWeight: FontWeight.w700, color: GovColors.navy)),
+          ],
+        ),
+        actions: [
+          const LanguageSwitcherAction(),
+          IconButton(
+            tooltip: 'Sign out',
+            icon: const Icon(Icons.logout, color: GovColors.error),
+            onPressed: context.read<AppState>().logout,
+          ),
+        ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(3),
+          child: GovTricolorBar(height: 3),
+        ),
+      ),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: GovColors.border)),
+        ),
+        child: NavigationBar(
+          backgroundColor: Colors.white,
+          indicatorColor: GovColors.navySurface,
+          selectedIndex: _tab,
+          onDestinationSelected: (i) => setState(() => _tab = i),
+          destinations: const [
+            NavigationDestination(icon: Icon(Icons.insights, color: GovColors.navy), label: 'Overview'),
+            NavigationDestination(icon: Icon(Icons.gavel, color: GovColors.navy), label: 'Disputes'),
+            NavigationDestination(icon: Icon(Icons.rule, color: GovColors.navy), label: 'Rules'),
+            NavigationDestination(icon: Icon(Icons.settings, color: GovColors.navy), label: 'Setup'),
+          ],
+        ),
+      ),
+      body: Column(
+        children: [
+          const GovTopUtilityBar(),
+          Expanded(child: pages[_tab]),
+          const GovPortalFooter(),
         ],
       ),
     );
