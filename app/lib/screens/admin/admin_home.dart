@@ -62,9 +62,8 @@ class _AdminHomeState extends State<AdminHome> {
       ),
       body: Column(
         children: [
-          const GovTopUtilityBar(),
           Expanded(child: pages[_tab]),
-          const GovPortalFooter(),
+          const GovPortalFooter(compact: true),
         ],
       ),
     );
@@ -81,31 +80,324 @@ class _Overview extends StatelessWidget {
       builder: (c, d, reload) {
         final sum = d[0] as Map, flags = d[1] as Map, stock = d[2] as Map, trends = d[3] as List;
         if ((sum['total_certificates'] as int) == 0) return const EmptyView('No certificates have been synced yet.');
+
+        final totalCerts = sum['total_certificates'] as int;
+        final avgFresh = sum['avg_fresh_pct'];
+        final openDisputes = sum['open_disputes'];
+        final weightMismatches = sum['weight_mismatches'];
+        final byGrade = Map<String, dynamic>.from(sum['by_grade'] as Map);
+        final byMandi = (sum['by_mandi'] as List).cast<Map>();
+        final officerFlags = (flags['flags'] as List).cast<Map>();
+        final stockItems = (stock['items'] as List).cast<Map>();
+
         return RefreshIndicator(
           onRefresh: () async => reload(),
-          child: ListView(padding: const EdgeInsets.all(16), children: [
-            Text('${sum['total_certificates']} certificates · avg ${sum['avg_fresh_pct']}% fresh'),
-            Text('Open disputes: ${sum['open_disputes']} · Weight mismatches: ${sum['weight_mismatches']}'),
-            const SizedBox(height: 12),
-            Text('By grade', style: Theme.of(context).textTheme.titleMedium),
-            for (final e in (sum['by_grade'] as Map).entries) Text('${e.key}: ${e.value}'),
-            const SizedBox(height: 12),
-            Text('By mandi', style: Theme.of(context).textTheme.titleMedium),
-            for (final m in (sum['by_mandi'] as List)) Text('${m['mandi'] ?? 'Unassigned'}: ${m['certificates']} · ${m['avg_fresh_pct']}% fresh'),
-            const SizedBox(height: 12),
-            Text('Officer alerts', style: Theme.of(context).textTheme.titleMedium),
-            if ((flags['flags'] as List).isEmpty) Text(flags['note'] ?? 'No officers currently flagged.'),
-            for (final f in (flags['flags'] as List)) ListTile(leading: const Icon(Icons.flag), title: Text('${f['officer']} (${f['certificates']} certs)'), subtitle: Text((f['reasons'] as List).join('\n'))),
-            const SizedBox(height: 12),
-            Text('Stock health (shortest shelf-life first)', style: Theme.of(context).textTheme.titleMedium),
-            if ((stock['items'] as List).isEmpty) Text(stock['note'] ?? 'None'),
-            for (final s in (stock['items'] as List).take(10)) Text('${s['shelf_life_days']} days · grade ${s['grade']} · ${s['certificate_id']}'),
-            const SizedBox(height: 12),
-            Text('Last 30 days', style: Theme.of(context).textTheme.titleMedium),
-            for (final t in trends) Text('${t['date']}: ${t['count']} batches, ${t['avg_fresh_pct']}% fresh'),
-          ]),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: GovResponsiveContainer(
+              maxWidth: 1100,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // KPI Grid
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final width = constraints.maxWidth;
+                      final cols = width >= 800 ? 4 : (width >= 480 ? 2 : 1);
+                      final kpis = [
+                        _KpiCard(
+                          title: 'Total Certifications',
+                          value: '$totalCerts',
+                          subtitle: 'Tamper-evident batches',
+                          icon: Icons.verified,
+                          color: GovColors.navy,
+                        ),
+                        _KpiCard(
+                          title: 'Average Freshness',
+                          value: '$avgFresh%',
+                          subtitle: 'NAFED baseline target',
+                          icon: Icons.eco,
+                          color: GovColors.greenDark,
+                        ),
+                        _KpiCard(
+                          title: 'Open Disputes',
+                          value: '$openDisputes',
+                          subtitle: 'Pending redressal',
+                          icon: Icons.gavel,
+                          color: (openDisputes as num) > 0 ? GovColors.error : GovColors.navy,
+                        ),
+                        _KpiCard(
+                          title: 'Scale Mismatches',
+                          value: '$weightMismatches',
+                          subtitle: 'Flagged weight discrepancies',
+                          icon: Icons.scale,
+                          color: (weightMismatches as num) > 0 ? GovColors.saffronDark : GovColors.navy,
+                        ),
+                      ];
+
+                      if (cols == 4) {
+                        return Row(
+                          children: [
+                            for (var i = 0; i < kpis.length; i++) ...[
+                              if (i > 0) const SizedBox(width: 12),
+                              Expanded(child: kpis[i]),
+                            ],
+                          ],
+                        );
+                      } else if (cols == 2) {
+                        return Column(
+                          children: [
+                            Row(children: [Expanded(child: kpis[0]), const SizedBox(width: 12), Expanded(child: kpis[1])]),
+                            const SizedBox(height: 12),
+                            Row(children: [Expanded(child: kpis[2]), const SizedBox(width: 12), Expanded(child: kpis[3])]),
+                          ],
+                        );
+                      } else {
+                        return Column(
+                          children: [
+                            for (var i = 0; i < kpis.length; i++) ...[
+                              if (i > 0) const SizedBox(height: 10),
+                              kpis[i],
+                            ],
+                          ],
+                        );
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Responsive 2-column or stacked layout
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWide = constraints.maxWidth >= 768;
+
+                      final gradeAndMandi = Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          GovCard(
+                            title: 'Grade Distribution',
+                            subtitle: 'NAFED categorization breakdown',
+                            icon: Icons.pie_chart_outline,
+                            child: Column(
+                              children: [
+                                for (final e in byGrade.entries)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 4),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: e.key.toUpperCase().contains('A') ? GovColors.greenLight : GovColors.navySurface,
+                                            borderRadius: BorderRadius.circular(4),
+                                            border: Border.all(color: GovColors.border),
+                                          ),
+                                          child: Text('Grade ${e.key}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: GovColors.navy)),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(4),
+                                            child: LinearProgressIndicator(
+                                              value: totalCerts > 0 ? (e.value as num) / totalCerts : 0,
+                                              backgroundColor: GovColors.navySurface,
+                                              color: e.key.toUpperCase().contains('A') ? GovColors.green : GovColors.navy,
+                                              minHeight: 8,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Text('${e.value}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: GovColors.navy)),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          GovCard(
+                            title: 'Mandi Performance',
+                            subtitle: 'Produce inspected by procurement center',
+                            icon: Icons.storefront,
+                            child: Column(
+                              children: [
+                                if (byMandi.isEmpty) const Text('No mandi activity recorded.', style: TextStyle(color: GovColors.textMuted, fontSize: 12)),
+                                for (final m in byMandi)
+                                  ListTile(
+                                    dense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                    leading: const Icon(Icons.location_on, color: GovColors.navy, size: 20),
+                                    title: Text('${m['mandi'] ?? 'Unassigned Center'}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
+                                    subtitle: Text('${m['certificates']} certificates issued', style: const TextStyle(fontSize: 11)),
+                                    trailing: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(color: GovColors.greenLight, borderRadius: BorderRadius.circular(4)),
+                                      child: Text('${m['avg_fresh_pct']}% Fresh', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: GovColors.greenDark)),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+
+                      final alertsAndStock = Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          GovCard(
+                            title: 'Officer Audit Alerts',
+                            subtitle: 'Anomalies & high reject rate flags',
+                            icon: Icons.warning_amber,
+                            child: Column(
+                              children: [
+                                if (officerFlags.isEmpty)
+                                  Text(flags['note'] ?? 'All procurement officers operating within nominal parameters.',
+                                      style: const TextStyle(color: GovColors.textMuted, fontSize: 12)),
+                                for (final f in officerFlags)
+                                  Container(
+                                    margin: const EdgeInsets.only(bottom: 6),
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: GovColors.errorLight,
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: GovColors.error),
+                                    ),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Icon(Icons.flag, color: GovColors.error, size: 18),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text('${f['officer']} (${f['certificates']} certs)', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: GovColors.error)),
+                                              Text((f['reasons'] as List).join('\n'), style: const TextStyle(fontSize: 11, color: GovColors.navy)),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          GovCard(
+                            title: 'Stock Health Alert',
+                            subtitle: 'Shortest estimated shelf-life batches',
+                            icon: Icons.inventory_2_outlined,
+                            child: Column(
+                              children: [
+                                if (stockItems.isEmpty)
+                                  Text(stock['note'] ?? 'No active stock alerts.', style: const TextStyle(color: GovColors.textMuted, fontSize: 12)),
+                                for (final s in stockItems.take(5))
+                                  ListTile(
+                                    dense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                    leading: Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(color: GovColors.saffronLight, borderRadius: BorderRadius.circular(4)),
+                                      child: const Icon(Icons.timer, size: 16, color: GovColors.saffronDark),
+                                    ),
+                                    title: Text('${s['shelf_life_days']} days remaining', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                                    subtitle: Text('Grade ${s['grade']} • ${s['certificate_id']}'.substring(0, 24), style: const TextStyle(fontSize: 10.5, fontFamily: 'monospace')),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          if (trends.isNotEmpty)
+                            GovCard(
+                              title: 'Inspection Trends',
+                              subtitle: 'Batches certified in recent days',
+                              icon: Icons.trending_up,
+                              child: Column(
+                                children: [
+                                  for (final t in trends.take(5))
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 3),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text('${t['date']}', style: const TextStyle(fontSize: 11.5, color: GovColors.textSecondary)),
+                                          Text('${t['count']} batches (${t['avg_fresh_pct']}% fresh)', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: GovColors.navy)),
+                                        ],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      );
+
+                      if (isWide) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: gradeAndMandi),
+                            const SizedBox(width: 16),
+                            Expanded(child: alertsAndStock),
+                          ],
+                        );
+                      } else {
+                        return Column(
+                          children: [
+                            gradeAndMandi,
+                            alertsAndStock,
+                          ],
+                        );
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
         );
       },
+    );
+  }
+}
+
+class _KpiCard extends StatelessWidget {
+  const _KpiCard({
+    required this.title,
+    required this.value,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+  });
+
+  final String title;
+  final String value;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: GovColors.border),
+        boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 4, offset: Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: GovColors.textMuted)),
+              Icon(icon, size: 18, color: color),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color)),
+          const SizedBox(height: 2),
+          Text(subtitle, style: const TextStyle(fontSize: 10, color: GovColors.textSecondary)),
+        ],
+      ),
     );
   }
 }
@@ -564,43 +856,115 @@ class _SetupState extends State<_Setup> {
   @override
   Widget build(BuildContext context) {
     final api = context.read<AppState>().api;
-    return ListView(padding: const EdgeInsets.all(16), children: [
-      Text('Add mandi', style: Theme.of(context).textTheme.titleMedium),
-      TextField(controller: _mName, decoration: const InputDecoration(labelText: 'Name')),
-      TextField(controller: _mState, decoration: const InputDecoration(labelText: 'State')),
-      TextField(controller: _mDist, decoration: const InputDecoration(labelText: 'District')),
-      const SizedBox(height: 8),
-      FilledButton(
-        onPressed: () => _run(() async {
-          await api.createMandi(_mName.text.trim(), _mState.text.trim(), _mDist.text.trim());
-          await _loadMandis();
-        }, 'Mandi added'),
-        child: const Text('Add mandi'),
+    final isDesktop = GovBreakpoints.isTablet(context) || GovBreakpoints.isDesktop(context);
+
+    final mandiCard = GovCard(
+      title: 'Mandi Registry',
+      subtitle: 'Register new APMC market centers in the central directory',
+      icon: Icons.storefront,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(controller: _mName, decoration: const InputDecoration(labelText: 'Mandi Center Name', border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          TextField(controller: _mState, decoration: const InputDecoration(labelText: 'State (e.g. Maharashtra)', border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          TextField(controller: _mDist, decoration: const InputDecoration(labelText: 'District (e.g. Nashik)', border: OutlineInputBorder())),
+          const SizedBox(height: 14),
+          GovButton(
+            label: 'Register Mandi',
+            icon: Icons.add_business,
+            onPressed: () => _run(() async {
+              await api.createMandi(_mName.text.trim(), _mState.text.trim(), _mDist.text.trim());
+              _mName.clear();
+              _mState.clear();
+              _mDist.clear();
+              await _loadMandis();
+            }, 'Mandi added to directory'),
+          ),
+          if (_mandis.isNotEmpty) ...[
+            const Divider(height: 24),
+            const Text('Registered Mandis Directory:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: GovColors.navy)),
+            const SizedBox(height: 6),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 180),
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: _mandis.length,
+                itemBuilder: (c, i) => ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.location_city, size: 18, color: GovColors.navy),
+                  title: Text('${_mandis[i]['name']}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  subtitle: Text('${_mandis[i]['district']}, ${_mandis[i]['state']}', style: const TextStyle(fontSize: 10.5)),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
-      const Divider(height: 32),
-      Text('Create officer / admin account', style: Theme.of(context).textTheme.titleMedium),
-      TextField(controller: _uPhone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Phone')),
-      TextField(controller: _uName, decoration: const InputDecoration(labelText: 'Name')),
-      TextField(controller: _uPw, obscureText: true, decoration: const InputDecoration(labelText: 'Initial password (8+ chars)')),
-      DropdownButton<String>(
-        value: _role,
-        isExpanded: true,
-        items: const [DropdownMenuItem(value: 'officer', child: Text('Officer')), DropdownMenuItem(value: 'admin', child: Text('Admin'))],
-        onChanged: (v) => setState(() => _role = v!),
+    );
+
+    final userCard = GovCard(
+      title: 'Authorized Account Provisioning',
+      subtitle: 'Issue officer or admin credentials with assigned jurisdiction',
+      icon: Icons.person_add_alt_1,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(controller: _uPhone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Mobile Number (+91)', border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          TextField(controller: _uName, decoration: const InputDecoration(labelText: 'Full Name / Official Designation', border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          TextField(controller: _uPw, obscureText: true, decoration: const InputDecoration(labelText: 'Initial Password (8+ chars)', border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            initialValue: _role,
+            decoration: const InputDecoration(labelText: 'Assigned Role', border: OutlineInputBorder()),
+            items: const [DropdownMenuItem(value: 'officer', child: Text('Procurement Officer')), DropdownMenuItem(value: 'admin', child: Text('Central Administrator'))],
+            onChanged: (v) => setState(() => _role = v!),
+          ),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String?>(
+            initialValue: _mandiId,
+            decoration: const InputDecoration(labelText: 'Jurisdiction Mandi', border: OutlineInputBorder()),
+            hint: const Text('Select Mandi (for officers)'),
+            items: [for (final m in _mandis) DropdownMenuItem(value: m['id'] as String, child: Text('${m['name']} (${m['district']})'))],
+            onChanged: (v) => setState(() => _mandiId = v),
+          ),
+          const SizedBox(height: 14),
+          GovButton(
+            label: 'Provision Official Account',
+            icon: Icons.how_to_reg,
+            onPressed: () => _run(
+              () => api.adminCreateUser({'phone': _uPhone.text.trim(), 'name': _uName.text.trim(), 'password': _uPw.text, 'role': _role, 'mandi_id': _mandiId}),
+              'Account successfully provisioned',
+            ),
+          ),
+        ],
       ),
-      DropdownButton<String?>(
-        value: _mandiId,
-        isExpanded: true,
-        hint: const Text('Mandi (for officers)'),
-        items: [for (final m in _mandis) DropdownMenuItem(value: m['id'] as String, child: Text('${m['name']}'))],
-        onChanged: (v) => setState(() => _mandiId = v),
+    );
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: GovResponsiveContainer(
+        maxWidth: 1100,
+        child: isDesktop
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: mandiCard),
+                  const SizedBox(width: 16),
+                  Expanded(child: userCard),
+                ],
+              )
+            : Column(
+                children: [
+                  mandiCard,
+                  userCard,
+                ],
+              ),
       ),
-      FilledButton(
-        onPressed: () => _run(
-            () => api.adminCreateUser({'phone': _uPhone.text.trim(), 'name': _uName.text.trim(), 'password': _uPw.text, 'role': _role, 'mandi_id': _mandiId}),
-            'Account created'),
-        child: const Text('Create account'),
-      ),
-    ]);
+    );
   }
 }

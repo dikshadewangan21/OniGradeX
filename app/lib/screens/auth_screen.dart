@@ -60,21 +60,12 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: GovColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const GovPortalHeader(),
-            Expanded(
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 440),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
+    final isDesktop = GovBreakpoints.isDesktop(context);
+    final cardWidget = ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 460),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
                         GovCard(
                           title: _register ? 'Farmer Registration Portal' : 'Official Portal Sign-In',
                           subtitle: _register
@@ -314,14 +305,144 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                       ],
                     ),
-                  ),
+                  );
+
+    return Scaffold(
+      backgroundColor: GovColors.background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            const GovPortalHeader(),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isDesktop ? 36 : 16,
+                        vertical: isDesktop ? 36 : 20,
+                      ),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: isDesktop ? 1040 : 460),
+                          child: isDesktop
+                              ? Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Expanded(child: _GovPortalHero()),
+                                    SizedBox(width: 440, child: cardWidget),
+                                  ],
+                                )
+                              : cardWidget,
+                        ),
+                      ),
+                    ),
+                    const GovPortalFooter(),
+                  ],
                 ),
               ),
             ),
-            const GovPortalFooter(),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _GovPortalHero extends StatelessWidget {
+  const _GovPortalHero();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 36, top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: GovColors.saffronLight,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: const Color(0x80FF9933)),
+            ),
+            child: const Text(
+              'DEPARTMENT OF AGRICULTURE & FARMERS WELFARE',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: GovColors.saffronDark, letterSpacing: 0.5),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'National AI Mandi Quality\nAssessment Portal',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              color: GovColors.navy,
+              height: 1.25,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Standardized produce grading under NAFED specifications and e-NAM national market integration (SIH26031).',
+            style: TextStyle(fontSize: 13.5, color: GovColors.textSecondary, height: 1.5),
+          ),
+          const SizedBox(height: 28),
+          const _HeroFeature(
+            icon: Icons.offline_bolt_outlined,
+            title: 'On-Device Edge AI',
+            desc: 'Real-time TFLite computer vision without network dependency at APMC mandis.',
+          ),
+          const SizedBox(height: 16),
+          const _HeroFeature(
+            icon: Icons.verified_user_outlined,
+            title: 'Tamper-Evident SHA-256',
+            desc: 'Cryptographically hashed produce batches with central server digital signatures.',
+          ),
+          const SizedBox(height: 16),
+          const _HeroFeature(
+            icon: Icons.currency_rupee,
+            title: 'Fair e-NAM Mandi Payouts',
+            desc: 'Real-time Agmarknet modal rate calculation based on certified fresh percentage.',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroFeature extends StatelessWidget {
+  const _HeroFeature({required this.icon, required this.title, required this.desc});
+  final IconData icon;
+  final String title;
+  final String desc;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: GovColors.navySurface,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: GovColors.border),
+          ),
+          child: Icon(icon, color: GovColors.navy, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: GovColors.navy)),
+              const SizedBox(height: 2),
+              Text(desc, style: const TextStyle(fontSize: 11.5, color: GovColors.textMuted, height: 1.35)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

@@ -30,12 +30,14 @@ class ModelStatusScreen extends StatelessWidget {
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 600),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
+              child: Column(
+                children: [
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 600),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
                       GovCard(
                         title: 'AI Inference Engine Diagnostic',
                         subtitle: 'On-device TFLite model verification & compliance check',
@@ -148,9 +150,12 @@ class ModelStatusScreen extends StatelessWidget {
                   ),
                 ),
               ),
+                  const SizedBox(height: 24),
+                  const GovPortalFooter(),
+                ],
+              ),
             ),
           ),
-          const GovPortalFooter(),
         ],
       ),
     );

@@ -92,6 +92,39 @@ class GovEmblemPlaceholder extends StatelessWidget {
   }
 }
 
+/// Responsive Breakpoint Helper for phone, tablet, and desktop viewports
+class GovBreakpoints {
+  static bool isMobile(BuildContext context) => MediaQuery.sizeOf(context).width < 600;
+  static bool isTablet(BuildContext context) =>
+      MediaQuery.sizeOf(context).width >= 600 && MediaQuery.sizeOf(context).width < 960;
+  static bool isDesktop(BuildContext context) => MediaQuery.sizeOf(context).width >= 960;
+  static double width(BuildContext context) => MediaQuery.sizeOf(context).width;
+}
+
+/// Centers content with a responsive maximum width suitable for desktop/tablet
+class GovResponsiveContainer extends StatelessWidget {
+  const GovResponsiveContainer({
+    super.key,
+    required this.child,
+    this.maxWidth = 1100,
+    this.padding,
+  });
+
+  final Widget child;
+  final double maxWidth;
+  final EdgeInsetsGeometry? padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: padding != null ? Padding(padding: padding!, child: child) : child,
+      ),
+    );
+  }
+}
+
 /// Top Utility Bar seen on official Indian government web portals (NIC style)
 class GovTopUtilityBar extends StatelessWidget {
   const GovTopUtilityBar({super.key});
@@ -99,17 +132,20 @@ class GovTopUtilityBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
+    final isNarrow = MediaQuery.sizeOf(context).width < 520;
     return Container(
       color: GovColors.navyDark,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: isNarrow ? 10 : 16, vertical: 4),
       child: Row(
         children: [
           const Icon(Icons.shield_outlined, color: GovColors.saffron, size: 14),
           const SizedBox(width: 6),
-          const Expanded(
+          Expanded(
             child: Text(
-              'भारत सरकार | Government of India • National Mandi Assessment Gateway',
-              style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w500),
+              isNarrow
+                  ? 'भारत सरकार | GOI • Mandi Portal'
+                  : 'भारत सरकार | Government of India • National Mandi Assessment Gateway',
+              style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w500),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -129,7 +165,7 @@ class GovTopUtilityBar extends StatelessWidget {
                   const Icon(Icons.dns_outlined, color: Colors.white70, size: 12),
                   const SizedBox(width: 4),
                   ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 120),
+                    constraints: BoxConstraints(maxWidth: isNarrow ? 80 : 130),
                     child: Text(
                       AppConfig.apiBaseUrl,
                       style: const TextStyle(color: Colors.white, fontSize: 10, fontFamily: 'monospace'),
@@ -169,6 +205,7 @@ class GovPortalHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
+    final isMobile = GovBreakpoints.isMobile(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -176,7 +213,7 @@ class GovPortalHeader extends StatelessWidget {
         const GovTricolorBar(height: 3),
         Container(
           color: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 20, vertical: isMobile ? 10 : 14),
           child: Row(
             children: [
               if (showBack && Navigator.of(context).canPop()) ...[
@@ -185,18 +222,18 @@ class GovPortalHeader extends StatelessWidget {
                   onPressed: () => Navigator.of(context).pop(),
                   tooltip: 'Go back',
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 4),
               ],
-              const GovEmblemPlaceholder(size: 44),
+              GovEmblemPlaceholder(size: isMobile ? 38 : 46),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'कृषि एवं किसान कल्याण विभाग | Department of Agriculture & Farmers Welfare',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: isMobile ? 9 : 10.5,
                         fontWeight: FontWeight.w600,
                         color: GovColors.textMuted,
                         letterSpacing: 0.3,
@@ -204,11 +241,11 @@ class GovPortalHeader extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
                       'OniGrader — National Mandi Quality Portal',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: isMobile ? 14 : 17,
                         fontWeight: FontWeight.w800,
                         color: GovColors.navy,
                         letterSpacing: -0.2,
@@ -219,7 +256,7 @@ class GovPortalHeader extends StatelessWidget {
                     Text(
                       'NAFED Grading & e-NAM Quality Standard Compliance (SIH26031)',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: isMobile ? 9.5 : 11,
                         color: GovColors.saffronDark,
                         fontWeight: FontWeight.w600,
                       ),
@@ -288,17 +325,17 @@ class GovPortalFooter extends StatelessWidget {
     if (compact) {
       return Container(
         color: GovColors.navy,
-        child: Column(
+        child: const Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const GovTricolorBar(height: 2),
+            GovTricolorBar(height: 2),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
-                  const Icon(Icons.verified_user_outlined, size: 14, color: GovColors.saffron),
-                  const SizedBox(width: 6),
-                  const Expanded(
+                  Icon(Icons.verified_user_outlined, size: 14, color: GovColors.saffron),
+                  SizedBox(width: 6),
+                  Expanded(
                     child: Text(
                       'OniGrader Portal • NAFED / e-NAM Standard Compliant',
                       style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w500),

@@ -66,43 +66,52 @@ class _FarmerHomeState extends State<FarmerHome> {
       ),
       body: Column(
         children: [
-          // Welcome greeting banner
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: Colors.white,
-            child: Row(
-              children: [
-                const Icon(Icons.account_circle, color: GovColors.navy, size: 28),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Farmer: ${s.profile?['name'] ?? "Registered Producer"}',
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: GovColors.navy),
-                      ),
-                      Text(
-                        'Registered Mobile: ${s.profile?['phone'] ?? ""}',
-                        style: const TextStyle(fontSize: 11, color: GovColors.textMuted),
-                      ),
-                    ],
+          Expanded(
+            child: GovResponsiveContainer(
+              maxWidth: 1000,
+              child: Column(
+                children: [
+                  // Welcome greeting banner
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    color: Colors.white,
+                    child: Row(
+                      children: [
+                        const Icon(Icons.account_circle, color: GovColors.navy, size: 28),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Farmer: ${s.profile?['name'] ?? "Registered Producer"}',
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: GovColors.navy),
+                              ),
+                              Text(
+                                'Registered Mobile: ${s.profile?['phone'] ?? ""}',
+                                style: const TextStyle(fontSize: 11, color: GovColors.textMuted),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: GovColors.greenLight,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: GovColors.green),
+                          ),
+                          child: const Text('VERIFIED FARMER', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: GovColors.greenDark)),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: GovColors.greenLight,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: GovColors.green),
-                  ),
-                  child: const Text('VERIFIED FARMER', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: GovColors.greenDark)),
-                ),
-              ],
+                  const Divider(height: 1),
+                  Expanded(child: _tab == 0 ? const _Certificates() : const _Disputes()),
+                ],
+              ),
             ),
           ),
-          const Divider(height: 1),
-          Expanded(child: _tab == 0 ? const _Certificates() : const _Disputes()),
           const GovPortalFooter(compact: true),
         ],
       ),

@@ -54,73 +54,82 @@ class OfficerHome extends StatelessWidget {
       ),
       body: Column(
         children: [
-          if (!s.model.ready)
-            _Banner(
-              'Grading unavailable: the AI model is not installed on this build.\n${s.model.problems.join('\n')}',
-              error: true,
-            ),
-          if (s.rule == null) _Banner(s.ruleNote ?? 'Grading rules not loaded.', error: true),
-          if (s.rule != null && s.ruleNote != null) _Banner(s.ruleNote!),
-          if (s.pendingCount > 0)
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: GovColors.saffronLight,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: const Color(0x80FF9933)),
+          Expanded(
+            child: GovResponsiveContainer(
+              maxWidth: 1000,
+              child: Column(
+                children: [
+                  if (!s.model.ready)
+                    _Banner(
+                      'Grading unavailable: the AI model is not installed on this build.\n${s.model.problems.join('\n')}',
+                      error: true,
+                    ),
+                  if (s.rule == null) _Banner(s.ruleNote ?? 'Grading rules not loaded.', error: true),
+                  if (s.rule != null && s.ruleNote != null) _Banner(s.ruleNote!),
+                  if (s.pendingCount > 0)
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: GovColors.saffronLight,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: const Color(0x80FF9933)),
+                      ),
+                      child: ListTile(
+                        leading: s.syncing
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: GovColors.saffronDark))
+                            : const Icon(Icons.cloud_upload_outlined, color: GovColors.saffronDark),
+                        title: Text(
+                          '${s.pendingCount} certificate(s) waiting to sync',
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: GovColors.navy),
+                        ),
+                        subtitle: s.lastSyncError == null
+                            ? const Text('Offline records will be uploaded securely to the Mandi Gateway', style: TextStyle(fontSize: 11))
+                            : Text(s.lastSyncError!, style: const TextStyle(fontSize: 11, color: GovColors.error)),
+                        trailing: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: GovColors.navy,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                          ),
+                          onPressed: s.syncing ? null : s.syncPending,
+                          icon: const Icon(Icons.sync, size: 14),
+                          label: const Text('Sync now'),
+                        ),
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.receipt_long, size: 16, color: GovColors.navy),
+                        const SizedBox(width: 6),
+                        const Text(
+                          'Official Produce Inspection Register',
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: GovColors.navy),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: GovColors.navySurface,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: GovColors.border),
+                          ),
+                          child: const Text(
+                            'OFFICER TERMINAL',
+                            style: TextStyle(fontSize: 10, fontFamily: 'monospace', fontWeight: FontWeight.w600, color: GovColors.navy),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  const Expanded(child: _LocalHistory()),
+                ],
               ),
-              child: ListTile(
-                leading: s.syncing
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: GovColors.saffronDark))
-                    : const Icon(Icons.cloud_upload_outlined, color: GovColors.saffronDark),
-                title: Text(
-                  '${s.pendingCount} certificate(s) waiting to sync',
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: GovColors.navy),
-                ),
-                subtitle: s.lastSyncError == null
-                    ? const Text('Offline records will be uploaded securely to the Mandi Gateway', style: TextStyle(fontSize: 11))
-                    : Text(s.lastSyncError!, style: const TextStyle(fontSize: 11, color: GovColors.error)),
-                trailing: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: GovColors.navy,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                  ),
-                  onPressed: s.syncing ? null : s.syncPending,
-                  icon: const Icon(Icons.sync, size: 14),
-                  label: const Text('Sync now'),
-                ),
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                const Icon(Icons.receipt_long, size: 16, color: GovColors.navy),
-                const SizedBox(width: 6),
-                const Text(
-                  'Official Produce Inspection Register',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: GovColors.navy),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: GovColors.navySurface,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: GovColors.border),
-                  ),
-                  child: const Text(
-                    'OFFICER TERMINAL',
-                    style: TextStyle(fontSize: 10, fontFamily: 'monospace', fontWeight: FontWeight.w600, color: GovColors.navy),
-                  ),
-                ),
-              ],
             ),
           ),
-          const Divider(height: 1),
-          const Expanded(child: _LocalHistory()),
           const GovPortalFooter(compact: true),
         ],
       ),

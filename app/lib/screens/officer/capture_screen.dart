@@ -16,6 +16,7 @@ import '../../ml/detector.dart';
 import '../../ml/postprocess.dart';
 import '../../state/app_state.dart';
 import '../../widgets/common.dart';
+import '../../widgets/gov_ui.dart';
 import '../certificate_screen.dart';
 
 /// Flow: camera -> location -> on-device inference -> review -> issue certificate (saved locally, synced later).
@@ -243,55 +244,145 @@ class _CaptureScreenState extends State<CaptureScreen> {
     final defectIds = {for (final c in s.model.classes) if (c['role'] == 'defect') c['id'] as int};
     final payout = _rate == null ? null : (_rate! * r.freshPct / 100);
     final hasHeatmap = _result?.heatmap != null;
+    final isDesktop = GovBreakpoints.isTablet(context) || GovBreakpoints.isDesktop(context);
 
-    return ListView(padding: const EdgeInsets.all(16), children: [
-      AspectRatio(
-        aspectRatio: 4 / 3,
-        child: Stack(fit: StackFit.expand, children: [
-          Image.file(_image!, fit: BoxFit.fill),
-          if (hasHeatmap)
-            Opacity(opacity: 0.6, child: Image.memory(_result!.heatmap!, fit: BoxFit.fill)),
-          CustomPaint(painter: DetectionBoxPainter(_result!.detections, defectIds)),
-        ]),
+    final imageWidget = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AspectRatio(
+          aspectRatio: 4 / 3,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: Stack(fit: StackFit.expand, children: [
+              Image.file(_image!, fit: BoxFit.fill),
+              if (hasHeatmap)
+                Opacity(opacity: 0.6, child: Image.memory(_result!.heatmap!, fit: BoxFit.fill)),
+              CustomPaint(painter: DetectionBoxPainter(_result!.detections, defectIds)),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          hasHeatmap
+              ? 'Heatmap overlay rendered from model heatmap output. Red/green boxes show detections.'
+              : 'Red = defective onion, green = fresh. Boxes show what the model detected; no model heatmap output declared.',
+          style: const TextStyle(fontSize: 11.5, color: GovColors.textMuted),
+        ),
+      ],
+    );
+
+    final formWidget = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        GovCard(
+          title: 'Produce Quality Analysis',
+          subtitle: 'Certified on-device batch evaluation',
+          icon: Icons.analytics_outlined,
+          badge: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: grade.toUpperCase().contains('A') ? GovColors.greenLight : GovColors.saffronLight,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: grade.toUpperCase().contains('A') ? GovColors.green : GovColors.saffron),
+            ),
+            child: Text(
+              'GRADE $grade',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11, color: grade.toUpperCase().contains('A') ? GovColors.greenDark : GovColors.saffronDark),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('${r.onionCount} onions · ${r.freshPct}% fresh · ${r.defectivePct}% defective', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              const Divider(height: 16),
+              for (final e in r.details.entries)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('${e.key}:', style: const TextStyle(fontSize: 12, color: GovColors.textSecondary)),
+                      Text('${e.value}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                    ],
+                  ),
+                ),
+              if (!r.details.containsKey('median_diameter_mm'))
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 2),
+                  child: Text('Median diameter: Not available (no reference object detected in frame)', style: TextStyle(color: Colors.grey, fontSize: 11.5)),
+                ),
+              const SizedBox(height: 6),
+              Text('Model confidence (mean): ${(r.batchConfidence * 100).toStringAsFixed(1)}%', style: const TextStyle(fontSize: 11.5, color: GovColors.textMuted)),
+              const Divider(height: 16),
+              if (payout != null)
+                Text('Indicative payout: ₹${payout.toStringAsFixed(2)}/kg  ($_rateSource)', style: const TextStyle(fontWeight: FontWeight.w800, color: GovColors.greenDark, fontSize: 13))
+              else
+                Text(_rateNote ?? 'Payout not computed.', style: const TextStyle(fontSize: 12, color: GovColors.textMuted)),
+              if (_rate != null && _rateNote != null) Text(_rateNote!, style: const TextStyle(fontSize: 11, color: GovColors.textMuted)),
+            ],
+          ),
+        ),
+        GovCard(
+          title: 'Batch Dispatch & Tagging',
+          subtitle: 'Associate farmer passbook & scale weight',
+          icon: Icons.assignment_turned_in_outlined,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: _farmer,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(labelText: 'Farmer phone (optional)', border: OutlineInputBorder()),
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                validator: _validatePhone,
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _weight,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'Scale weight in kg (optional)', border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 14),
+              GovButton(
+                label: 'Issue Official Certificate',
+                icon: Icons.verified,
+                onPressed: _validatePhone(_farmer.text) == null ? _issue : null,
+              ),
+              const SizedBox(height: 6),
+              TextButton.icon(
+                onPressed: _capture,
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('Retake Photo'),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: GovResponsiveContainer(
+        maxWidth: 1040,
+        child: isDesktop
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 3, child: imageWidget),
+                  const SizedBox(width: 16),
+                  Expanded(flex: 3, child: formWidget),
+                ],
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  imageWidget,
+                  const SizedBox(height: 12),
+                  formWidget,
+                ],
+              ),
       ),
-      const SizedBox(height: 4),
-      Text(
-        hasHeatmap
-            ? 'Heatmap overlay rendered from model heatmap output. Red/green boxes show detections.'
-            : 'Red = defective onion, green = fresh. Boxes show what the model detected; no model heatmap output declared.',
-        style: const TextStyle(fontSize: 12),
-      ),
-      const SizedBox(height: 16),
-      Text('Grade $grade', style: Theme.of(context).textTheme.headlineMedium),
-      Text('${r.onionCount} onions · ${r.freshPct}% fresh · ${r.defectivePct}% defective'),
-      for (final e in r.details.entries) Text('${e.key}: ${e.value}'),
-      if (!r.details.containsKey('median_diameter_mm'))
-        const Text('Median diameter: Not available (no reference object detected in frame)', style: TextStyle(color: Colors.grey)),
-      Text('Model confidence (mean): ${(r.batchConfidence * 100).toStringAsFixed(1)}%'),
-      const SizedBox(height: 8),
-      if (payout != null) Text('Indicative payout: ₹${payout.toStringAsFixed(2)}/kg  ($_rateSource)') else Text(_rateNote ?? 'Payout not computed.'),
-      if (_rate != null && _rateNote != null) Text(_rateNote!),
-      const SizedBox(height: 16),
-      TextFormField(
-        controller: _farmer,
-        keyboardType: TextInputType.phone,
-        decoration: const InputDecoration(labelText: 'Farmer phone (optional, lets them see this certificate)', border: OutlineInputBorder()),
-        autovalidateMode: AutovalidateMode.onUserInteraction,
-        validator: _validatePhone,
-      ),
-      const SizedBox(height: 12),
-      TextFormField(
-        controller: _weight,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        decoration: const InputDecoration(labelText: 'Scale weight in kg (optional)', border: OutlineInputBorder()),
-      ),
-      const SizedBox(height: 16),
-      FilledButton(
-        onPressed: _validatePhone(_farmer.text) == null ? _issue : null,
-        child: const Text('Issue certificate'),
-      ),
-      TextButton(onPressed: _capture, child: const Text('Retake photo')),
-    ]);
+    );
   }
 }
 
