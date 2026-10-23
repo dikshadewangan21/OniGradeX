@@ -6,6 +6,9 @@ from pydantic import BaseModel, Field, field_validator
 from .models import DisputeStatus, Role
 
 
+import re
+
+
 class RegisterIn(BaseModel):
     phone: str = Field(pattern=r"^\+?[0-9]{10,15}$")
     name: str = Field(min_length=2, max_length=200)
@@ -13,10 +16,24 @@ class RegisterIn(BaseModel):
     role: Role = Role.farmer  # self-registration is farmer-only; enforced in router
     mandi_id: str | None = None
 
+    @field_validator("phone", mode="before")
+    @classmethod
+    def clean_phone(cls, v: Any) -> str:
+        if isinstance(v, str):
+            return re.sub(r"[\s\-\(\)]", "", v.strip())
+        return str(v)
+
 
 class LoginIn(BaseModel):
     phone: str
     password: str
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def clean_phone(cls, v: Any) -> str:
+        if isinstance(v, str):
+            return re.sub(r"[\s\-\(\)]", "", v.strip())
+        return str(v)
 
 
 class TokenOut(BaseModel):

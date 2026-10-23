@@ -29,6 +29,18 @@ class _AuthScreenState extends State<AuthScreen> {
     super.dispose();
   }
 
+  String _normalizePhone(String raw) {
+    var p = raw.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+    if (p.startsWith('+91')) {
+      p = p.substring(3);
+    } else if (p.startsWith('91') && p.length == 12) {
+      p = p.substring(2);
+    } else if (p.startsWith('0') && p.length == 11) {
+      p = p.substring(1);
+    }
+    return p;
+  }
+
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
     final s = context.read<AppState>();
@@ -37,7 +49,7 @@ class _AuthScreenState extends State<AuthScreen> {
       _error = null;
     });
 
-    final phoneClean = _phone.text.trim();
+    final phoneClean = _normalizePhone(_phone.text.trim());
     final pwClean = _pw.text;
 
     try {
@@ -56,6 +68,55 @@ class _AuthScreenState extends State<AuthScreen> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Widget _roleChip({
+    required String label,
+    required String phone,
+    required String password,
+    required Color color,
+  }) {
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _register = false;
+          _phone.text = phone;
+          _pw.text = password;
+          _error = null;
+        });
+      },
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: color.withOpacity(0.5)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 6),
+                Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Mobile: $phone',
+              style: const TextStyle(fontSize: 10, color: GovColors.textSecondary, fontFamily: 'monospace'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -134,9 +195,9 @@ class _AuthScreenState extends State<AuthScreen> {
                                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                                   ),
                                   validator: (v) {
-                                    final val = v?.trim() ?? '';
+                                    final val = _normalizePhone(v?.trim() ?? '');
                                     if (val.isEmpty) return 'Mobile number is required';
-                                    if (!RegExp(r'^\+?[0-9]{10,15}$').hasMatch(val)) {
+                                    if (!RegExp(r'^[0-9]{10}$').hasMatch(val)) {
                                       return 'Enter valid 10-digit mobile number';
                                     }
                                     return null;
@@ -280,6 +341,63 @@ class _AuthScreenState extends State<AuthScreen> {
                             ),
                           ),
                         ),
+                        const SizedBox(height: 12),
+
+                        // Authorized Portal Accounts Quick-Fill card
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: GovColors.navySurface,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: GovColors.border),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(Icons.badge_outlined, size: 16, color: GovColors.navy),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Authorized Portal Accounts (Quick Fill)',
+                                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 11.5, color: GovColors.navy),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'Tap a role below to automatically fill credentials for instant testing:',
+                                style: TextStyle(fontSize: 10.5, color: GovColors.textSecondary),
+                              ),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: [
+                                  _roleChip(
+                                    label: 'Central Admin',
+                                    phone: '9000000001',
+                                    password: 'adminpassword123',
+                                    color: GovColors.navy,
+                                  ),
+                                  _roleChip(
+                                    label: 'Mandi Officer',
+                                    phone: '9000000003',
+                                    password: 'officerpassword123',
+                                    color: GovColors.saffronDark,
+                                  ),
+                                  _roleChip(
+                                    label: 'Registered Farmer',
+                                    phone: '9000000002',
+                                    password: 'farmerpassword123',
+                                    color: GovColors.greenDark,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
 
                         // Official security notice card
                         Container(

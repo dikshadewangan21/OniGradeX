@@ -50,9 +50,16 @@ class ApiClient {
 
   String get baseUrl => _dio.options.baseUrl;
 
-  Future<bool> checkHealth() async {
+  Future<bool> checkHealth([String? overrideBaseUrl]) async {
     try {
-      final res = await _dio.get('/api/v1/health');
+      final dio = (overrideBaseUrl != null && overrideBaseUrl.trim().isNotEmpty)
+          ? Dio(BaseOptions(
+              baseUrl: overrideBaseUrl.trim().replaceAll(RegExp(r'/+$'), ''),
+              connectTimeout: const Duration(seconds: 4),
+              receiveTimeout: const Duration(seconds: 4),
+            ))
+          : _dio;
+      final res = await dio.get('/api/v1/health');
       return res.statusCode == 200;
     } catch (_) {
       return false;

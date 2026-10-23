@@ -617,18 +617,22 @@ class _GovServerConfigDialogState extends State<GovServerConfigDialog> {
   }
 
   Future<void> _testConnection() async {
+    final target = _ctrl.text.trim().replaceAll(RegExp(r'/+$'), '');
+    if (target.isEmpty) return;
     setState(() {
       _testing = true;
-      _status = 'Connecting to ${_ctrl.text.trim()}…';
+      _status = 'Connecting to $target…';
       _success = null;
     });
     final s = context.read<AppState>();
     try {
-      final healthy = await s.api.checkHealth();
+      final healthy = await s.api.checkHealth(target);
       setState(() {
         _testing = false;
         _success = healthy;
-        _status = healthy ? 'Gateway online and reachable (HTTP 200).' : 'Server responded with non-200 status.';
+        _status = healthy
+            ? 'Gateway online and reachable at $target (HTTP 200).'
+            : 'Gateway reachable but returned non-200 status.';
       });
     } catch (e) {
       setState(() {
@@ -678,6 +682,7 @@ class _GovServerConfigDialogState extends State<GovServerConfigDialog> {
             const SizedBox(height: 10),
             Wrap(
               spacing: 6,
+              runSpacing: 6,
               children: [
                 ActionChip(
                   label: const Text('Local (127.0.0.1)', style: TextStyle(fontSize: 11)),
@@ -686,6 +691,10 @@ class _GovServerConfigDialogState extends State<GovServerConfigDialog> {
                 ActionChip(
                   label: const Text('Emulator (10.0.2.2)', style: TextStyle(fontSize: 11)),
                   onPressed: () => _ctrl.text = 'http://10.0.2.2:8000',
+                ),
+                ActionChip(
+                  label: const Text('Wi-Fi LAN (192.168.1.9:8000)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                  onPressed: () => _ctrl.text = 'http://192.168.1.9:8000',
                 ),
               ],
             ),
