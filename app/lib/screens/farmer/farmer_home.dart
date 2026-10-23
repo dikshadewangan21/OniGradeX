@@ -61,6 +61,10 @@ class _FarmerHomeState extends State<FarmerHome> {
               icon: Icon(Icons.gavel, color: GovColors.navy),
               label: 'Dispute Redressal',
             ),
+            NavigationDestination(
+              icon: Icon(Icons.notifications_active_outlined, color: GovColors.navy),
+              label: 'Notifications',
+            ),
           ],
         ),
       ),
@@ -107,7 +111,13 @@ class _FarmerHomeState extends State<FarmerHome> {
                     ),
                   ),
                   const Divider(height: 1),
-                  Expanded(child: _tab == 0 ? const _Certificates() : const _Disputes()),
+                  Expanded(
+                    child: switch (_tab) {
+                      0 => const _Certificates(),
+                      1 => const _Disputes(),
+                      _ => const _Notifications(),
+                    },
+                  ),
                 ],
               ),
             ),
@@ -457,4 +467,98 @@ class _Disputes extends StatelessWidget {
           );
         },
       );
+}
+
+class _Notifications extends StatelessWidget {
+  const _Notifications();
+
+  @override
+  Widget build(BuildContext context) {
+    final api = context.read<AppState>().api;
+
+    return Loader<List<dynamic>>(
+      load: () => api.notifications(),
+      builder: (c, items, reload) {
+        if (items.isEmpty) {
+          return const EmptyView('No updates or administrative notices at this time.\nNotifications on dispute re-inspections will appear here.');
+        }
+
+        return RefreshIndicator(
+          onRefresh: () async => reload(),
+          child: ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (ctx, i) {
+              final n = Map<String, dynamic>.from(items[i] as Map);
+              final isRead = n['is_read'] == true;
+
+              return Container(
+                decoration: BoxDecoration(
+                  color: isRead ? Colors.white : GovColors.navySurface,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: isRead ? GovColors.border : GovColors.navy),
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  leading: Icon(
+                    isRead ? Icons.mark_email_read_outlined : Icons.mark_email_unread,
+                    color: isRead ? GovColors.textMuted : GovColors.navy,
+                    size: 26,
+                  ),
+                  title: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${n['title']}',
+                          style: TextStyle(
+                            fontWeight: isRead ? FontWeight.w600 : FontWeight.w800,
+                            fontSize: 13,
+                            color: GovColors.navy,
+                          ),
+                        ),
+                      ),
+                      if (!isRead)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: GovColors.saffronLight,
+                            borderRadius: BorderRadius.circular(3),
+                            border: Border.all(color: GovColors.saffron),
+                          ),
+                          child: const Text('NEW', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: GovColors.saffronDark)),
+                        ),
+                    ],
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 4),
+                      Text(
+                        '${n['message']}',
+                        style: const TextStyle(fontSize: 11.5, color: GovColors.textSecondary),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${n['created_at']}',
+                        style: const TextStyle(fontSize: 10, color: GovColors.textMuted),
+                      ),
+                    ],
+                  ),
+                  onTap: isRead
+                      ? null
+                      : () async {
+                          try {
+                            await api.markNotificationRead(n['id'] as String);
+                            reload();
+                          } catch (_) {}
+                        },
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
 }
